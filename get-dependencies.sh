@@ -8,6 +8,7 @@ echo "Installing package dependencies..."
 echo "---------------------------------------------------------------"
 pacman -Syu --noconfirm \
                  pitivi \
+                 libpeas \
                  frei0r-plugins \
                  gst-libav \
                  gst-plugin-opencv \
