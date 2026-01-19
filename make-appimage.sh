@@ -11,8 +11,8 @@ export UPINFO="gh-releases-zsync|${GITHUB_REPOSITORY%/*}|${GITHUB_REPOSITORY#*/}
 export ICON=/usr/share/icons/hicolor/scalable/apps/org.pitivi.Pitivi.svg
 export DESKTOP=/usr/share/applications/org.pitivi.Pitivi.desktop
 export DEPLOY_SYS_PYTHON=1
-export DEPLOY_GTK=1
-export DEPLOY_GDK=1
+#export DEPLOY_GTK=1
+#export DEPLOY_GDK=1
 export PATH_MAPPING='
   /usr/lib/pitivi: ${SHARUN_DIR}/lib/pitivi
   /usr/share/pitivi:${SHARUN_DIR}/share/pitivi
@@ -21,7 +21,9 @@ export PATH_MAPPING='
 # Deploy dependencies
 quick-sharun \
       /usr/bin/pitivi \
-      /usr/lib/pitivi/python/pitivi
+      /usr/lib/pitivi/python/pitivi \
+      /usr/lib/libgirepository* \
+      /usr/lib/girepository-1.0
 
 # Additional changes can be done in between here
 
