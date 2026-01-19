@@ -25,7 +25,7 @@ quick-sharun \
       /usr/lib/libpeas-1.0.so* \
       /usr/lib/girepository-1.0    
       
-echo 'GI_TYPELIB_PATH=${SHARUN_DIR}/shared/lib/girepository-1.0' >> ./AppDir/.env
+#echo 'GI_TYPELIB_PATH=${SHARUN_DIR}/shared/lib/girepository-1.0' >> ./AppDir/.env
 
 # Additional changes can be done in between here
 
