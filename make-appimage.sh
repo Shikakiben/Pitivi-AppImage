@@ -14,8 +14,8 @@ export DEPLOY_SYS_PYTHON=1
 export DEPLOY_GTK=1
 export DEPLOY_GDK=1
 export PATH_MAPPING='
-  /usr/lib/: ${SHARUN_DIR}/lib/
-  /usr/share/:${SHARUN_DIR}/share/
+  /usr/lib/pitivi: ${SHARUN_DIR}/lib/pitivi
+  /usr/share/pitivi:${SHARUN_DIR}/share/pitivi
 '
 
 # Deploy dependencies
@@ -24,7 +24,7 @@ quick-sharun \
       /usr/lib/pitivi/python/pitivi \
       /usr/lib/libpeas-1.0.so* \
       /usr/lib/girepository-1.0    
-
+echo 'GI_TYPELIB_PATH=${SHARUN_DIR}/shared/lib/girepository-1.0' >> ./AppDir/.env
 # Additional changes can be done in between here
 
 # Turn AppDir into AppImage
