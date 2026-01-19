@@ -24,7 +24,9 @@ quick-sharun \
       /usr/lib/pitivi/python/pitivi \
       /usr/lib/libpeas-1.0.so* \
       /usr/lib/girepository-1.0    
+      
 echo 'GI_TYPELIB_PATH=${SHARUN_DIR}/shared/lib/girepository-1.0' >> ./AppDir/.env
+
 # Additional changes can be done in between here
 
 # Turn AppDir into AppImage
