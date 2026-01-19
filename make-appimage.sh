@@ -18,8 +18,8 @@ export PATH_MAPPING='
 
 # Deploy dependencies
 quick-sharun \
-      /usr/bin/pitivi
-      #/usr/lib/pitivi/python/pitivi*
+      /usr/bin/pitivi \
+      /usr/lib/pitivi/python/pitivi
 
 # Additional changes can be done in between here
 
