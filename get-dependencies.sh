@@ -6,7 +6,14 @@ ARCH=$(uname -m)
 
 echo "Installing package dependencies..."
 echo "---------------------------------------------------------------"
-pacman -Syu --noconfirm pitivi
+pacman -Syu --noconfirm \
+                 pitivi \
+                 frei0r-plugins \
+                 gst-libav \
+                 gst-plugin-opencv \
+                 gst-plugins-ugly \
+                 python-librosa
+                 
 
 echo "Installing debloated packages..."
 echo "---------------------------------------------------------------"
