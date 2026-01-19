@@ -22,7 +22,8 @@ export PATH_MAPPING='
 quick-sharun \
       /usr/bin/pitivi \
       /usr/lib/pitivi/python/pitivi \
-      /usr/lib/libgirepository* \
+     #/usr/lib/libgirepository* \
+      /usr/lib/libpeas-1.0.so* \
       /usr/lib/girepository-1.0
 
 # Additional changes can be done in between here
