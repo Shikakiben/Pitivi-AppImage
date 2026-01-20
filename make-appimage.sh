@@ -13,6 +13,7 @@ export DESKTOP=/usr/share/applications/org.pitivi.Pitivi.desktop
 export DEPLOY_SYS_PYTHON=1
 export DEPLOY_GTK=1
 export DEPLOY_GDK=1
+export ANYLINUX_LIB=1
 export PATH_MAPPING='
   /usr/lib/pitivi: ${SHARUN_DIR}/lib/pitivi
   /usr/share/pitivi:${SHARUN_DIR}/share/pitivi
@@ -23,7 +24,8 @@ quick-sharun \
       /usr/bin/pitivi \
       /usr/lib/pitivi/python/pitivi \
       /usr/lib/libpeas-1.0.so* \
-      /usr/lib/girepository-1.0    
+      /usr/lib/girepository-1.0 \
+      /usr/lib/libgmodule-2.0.so*
       
 #echo 'GI_TYPELIB_PATH=${SHARUN_DIR}/shared/lib/girepository-1.0' >> ./AppDir/.env
 
