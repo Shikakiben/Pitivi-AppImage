@@ -15,8 +15,8 @@ export DEPLOY_GTK=1
 export DEPLOY_GDK=1
 export ANYLINUX_LIB=1
 export PATH_MAPPING='
-  /usr/lib/pitivi: ${SHARUN_DIR}/lib/pitivi
-  /usr/share/pitivi:${SHARUN_DIR}/share/pitivi
+  /usr/lib/pitivi:\${SHARUN_DIR}/lib/pitivi
+  /usr/share/pitivi:\${SHARUN_DIR}/share/pitivi
 '
 
 # Deploy dependencies
