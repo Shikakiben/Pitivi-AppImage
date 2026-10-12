@@ -18,58 +18,51 @@ pacman -Syu --noconfirm \
                  gst-plugins-ugly \
                  python-librosa
 
-# matplotlib 3.10 instead of the 3.11.x shipped by Arch.
+# Apply the thumbnail pixel format fix that the Flatpak carries on top of the
+# 2023.03.0 tag.
 #
-# Pitivi 2023.03 dies with SIGSEGV when a clip is dragged into the timeline,
-# and the crash happens inside matplotlib's own draw code:
+# Pitivi 2023.03 dies with SIGSEGV when a clip is dragged into the timeline.
+# The crash is inside matplotlib's draw, reached from GtkWidget's draw while
+# painting the keyframe curve of the clip.
 #
-#   File "matplotlib/figure.py", line 161 in _get_draw_artists
-#   File "matplotlib/figure.py", line 3271 in draw
-#   File "matplotlib/backends/backend_gtk3cairo.py", line 30 in on_draw_event
-#   File "pitivi/timeline/elements.py", line 812 in do_draw
+# The Flatpak applies three patches on top of the same upstream tag, and this
+# is the only functional one that the Arch package does not already have:
 #
-# so matplotlib is reached from GtkWidget's do_draw, to paint the keyframe
-# curve of a clip. The official Flatpak on this very same machine, with the
-# same project and the same media, does not crash - and matplotlib is one of
-# the few pieces where the two stacks actually differ:
+#   pitivi-appdata.patch      metadata only, irrelevant here
+#   pitivi-viewer.patch       ALREADY in the Arch package (the pkgrel rebuilds
+#                             backported it: Pipeline.create_sink() is gone from
+#                             utils/pipeline.py and viewer.py sets the preview
+#                             video sink only after the widget is embedded)
+#   pitivi-thumbnails.patch   NOT in the Arch package  <-- applied below
 #
-#                 Flatpak (works)      Arch today (crashes)
-#   Python            3.13.15                 3.14.8
-#   matplotlib         3.9.4                  3.11.2
-#   pygobject         3.50.0                  3.58.1
-#   GStreamer         1.26.11                 1.28.8
-#   numpy             1.26.4                  2.5.4
+# pitivi-thumbnails.patch is upstream commit 57199472, "timeline: generate
+# thumbnails in RGB - RGBA isn't supported to be saved as JPEG", see
+# https://gitlab.gnome.org/GNOME/pitivi/-/issues/2677
 #
-# Why this one package can be pinned when GStreamer could not:
+# It is applied here instead of via 'patch' on purpose: the AppImage is built
+# from pacman's copy of pitivi, so editing the file after the packages are in
+# place is enough, and a two-word substitution is easier to read than a patch
+# file. quick-sharun picks up whatever sits in /usr/lib/pitivi afterwards.
 #
-#   GStreamer is a family of fifteen packages built on top of each other and
-#   linked against ffmpeg and opencv. Moving one of them breaks the others, and
-#   the AppImage loses video decoding. matplotlib is the opposite case: it is a
-#   leaf, and the only compiled dependency it really cares about is numpy, whose
-#   2.x series promises ABI stability across the whole series (a module built
-#   against numpy 2.3 keeps working with numpy 2.5). Installing this older
-#   matplotlib changes nothing else in the system.
+# Note on what has already been ruled out at this point, so this stays the only
+# variable being tested:
+#   Pitivi master (a6473c58, 87 commits after 2023.03) - crashes the same
+#   GStreamer 1.26.10 instead of 1.28.8                   - no change
+#   matplotlib 3.10.9 instead of 3.11.2                   - no change
 #
-# 3.10.9-1 is the last 3.10.x Arch built (2026-04-24), just before 3.11.0
-# (2026-06-15). Arch only ever keeps one version in the repos, so the package
-# comes from archive.archlinux.org. A different version can be tried by setting
-# MATPLOTLIB_PIN.
-#
-# If this does not change anything, matplotlib is innocent and the next
-# suspects are pygobject and Python itself, which cannot be moved on their own.
-MATPLOTLIB_PIN="${MATPLOTLIB_PIN:-3.10.9-1}"
+# Left over from those tests: Python 3.14.8 and pygobject 3.58.1 are the only
+# other differences against the working Flatpak, but neither can be moved on
+# its own on Arch.
+PREVIEWERS=/usr/lib/pitivi/python/pitivi/timeline/previewers.py
 
-echo "Installing matplotlib $MATPLOTLIB_PIN (see comments above)..."
+echo "Applying the RGBA -> RGB thumbnails fix (see comments above)..."
 echo "---------------------------------------------------------------"
-workdir=$(pwd)
-mkdir -p /tmp/mpl-pin
-cd /tmp/mpl-pin
-file="python-matplotlib-$MATPLOTLIB_PIN-$ARCH.pkg.tar.zst"
-curl -sfLO "https://archive.archlinux.org/packages/p/python-matplotlib/$file" \
-    || { echo "ERROR: could not download $file" >&2; exit 1; }
-pacman -U --noconfirm --overwrite '*' "$file"
-cd "$workdir"
-pacman -Q python-matplotlib python-numpy
+if [ ! -f "$PREVIEWERS" ]; then
+    echo "ERROR: $PREVIEWERS not found" >&2
+    exit 1
+fi
+sed -i 's/format=(string)RGBA/format=(string)RGB/g' "$PREVIEWERS"
+grep -n 'format=(string)' "$PREVIEWERS"
 
 echo "Installing debloated packages..."
 echo "---------------------------------------------------------------"
