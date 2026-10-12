@@ -95,7 +95,18 @@ echo "---------------------------------------------------------------"
 # the whole Effects panel ends up empty and rendering breaks.
 # Keeping the real glycin avoids this and lets quick-sharun deploy the glycin
 # loaders and bubblewrap the same way it does for any GNOME glycin app.
-get-debloated-pkgs --add-common --prefer-nano '!' glycin
+#
+# The vulkan drivers are excluded for a different reason: '--add-common' implies
+# '--add-mesa' which pulls vulkan-{intel,radeon,virtio}. Those are freshly built
+# and require 'vulkan-mesa-implicit-layers', a package that did not exist yet on
+# the snapshot date (it was called 'vulkan-mesa-device-select' back then), so
+# pacman cannot resolve it and the step fails. Pitivi does not use Vulkan - mesa
+# alone provides the OpenGL it needs - so dropping the drivers is harmless.
+get-debloated-pkgs --add-common --prefer-nano \
+    '!' glycin \
+    '!' vulkan-intel \
+    '!' vulkan-radeon \
+    '!' vulkan-virtio
 
 # Comment this out if you need an AUR package
 #make-aur-package PACKAGENAME
