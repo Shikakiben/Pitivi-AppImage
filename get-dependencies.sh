@@ -49,6 +49,7 @@ gst-plugin-va gst-rtsp-server gst-plugin-opencv"
 
 echo "Pinning GStreamer $GST_PIN (see comments above)..."
 echo "---------------------------------------------------------------"
+workdir=$(pwd)
 mkdir -p /tmp/gst-pin
 cd /tmp/gst-pin
 for pkg in $GST_PKGS; do
@@ -58,7 +59,7 @@ for pkg in $GST_PKGS; do
         || { echo "ERROR: could not download $file" >&2; exit 1; }
 done
 pacman -U --noconfirm --overwrite '*' ./*.pkg.tar.zst
-cd /work
+cd "$workdir"
 pacman -Q gstreamer gst-editing-services
 
 echo "Installing debloated packages..."
