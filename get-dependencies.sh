@@ -78,35 +78,39 @@ pacman -Syyuu --noconfirm --overwrite '*' \
                  gst-libav \
                  gst-plugin-opencv \
                  gst-plugins-ugly \
-                 python-librosa
+                 python-librosa \
+                 mesa
 
 echo "Snapshot versions in use:"
 echo "---------------------------------------------------------------"
 pacman -Q pitivi python python-matplotlib python-gobject python-numpy \
           gstreamer gst-editing-services ffmpeg opencv
 
-echo "Installing debloated packages..."
+echo "Skipping the debloated packages while on the snapshot..."
 echo "---------------------------------------------------------------"
-# '! glycin' excludes the debloated 'glycin-mini' from the '--add-common' set.
-# glycin-mini is actually glycin-ng, a drop-in rewrite of GNOME glycin, and it
-# fails to decode grayscale / 1-bit PNGs (modes L, LA and 1 return NULL from
+# get-debloated-pkgs --add-common normally swaps a handful of libraries for
+# 'mini'/'nano' builds taken from pkgforge's continuously rebuilt GitHub
+# releases. Being rebuilt against the CURRENT Arch, they pull in current
+# versions of their own dependencies, and on a frozen snapshot the two sides
+# stop matching:
+#
+#   :: installing icu (78.3-1) breaks dependency 'libicuuc.so=76-64' required by raptor
+#
+# That is the same class of problem as the GStreamer pin described further up,
+# and the only coherent answer is one stack, one date. So while the snapshot is
+# in use the debloat step is skipped and the build carries the snapshot's
+# full-size libraries instead. The AppImage ends up a bit larger; it is also
+# what makes this test meaningful. Mesa is installed explicitly, as OpenGL is
+# the one thing the debloat step used to bring in.
+#
+# The '! glycin' exclusion documented here is kept for when the snapshot is
+dropped: glycin-mini is really glycin-ng, a drop-in rewrite that fails to
+# decode grayscale / 1-bit PNGs (modes L, LA and 1 return NULL from
 # GdkPixbuf.Pixbuf.new_from_file*). Pitivi ships a few effect thumbnails in
 # those modes and pitivi/effects.py does not catch the resulting exception, so
-# the whole Effects panel ends up empty and rendering breaks.
-# Keeping the real glycin avoids this and lets quick-sharun deploy the glycin
-# loaders and bubblewrap the same way it does for any GNOME glycin app.
+# the Effects panel ends up empty.
 #
-# The vulkan drivers are excluded for a different reason: '--add-common' implies
-# '--add-mesa' which pulls vulkan-{intel,radeon,virtio}. Those are freshly built
-# and require 'vulkan-mesa-implicit-layers', a package that did not exist yet on
-# the snapshot date (it was called 'vulkan-mesa-device-select' back then), so
-# pacman cannot resolve it and the step fails. Pitivi does not use Vulkan - mesa
-# alone provides the OpenGL it needs - so dropping the drivers is harmless.
-get-debloated-pkgs --add-common --prefer-nano \
-    '!' glycin \
-    '!' vulkan-intel \
-    '!' vulkan-radeon \
-    '!' vulkan-virtio
+# get-debloated-pkgs --add-common --prefer-nano '!' glycin
 
 # Comment this out if you need an AUR package
 #make-aur-package PACKAGENAME

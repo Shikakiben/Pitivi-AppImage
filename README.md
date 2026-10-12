@@ -7,7 +7,7 @@
 [![Latest Stable Release](https://img.shields.io/github/v/release/Shikakiben/Pitivi-AppImage)](https://github.com/Shikakiben/Pitivi-AppImage/releases/latest)
 
 <p align="center">
-  <img src="https://static.gnome.org/catalog/app-icon/scalable/org.pitivi.Pitivi.svg" width="128" />
+  <img src="https://gitlab.gnome.org/GNOME/pitivi/-/raw/master/data/icons/hicolor/scalable/apps/org.pitivi.Pitivi.svg" width="128" />
 </p>
 
 
