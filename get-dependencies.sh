@@ -4,9 +4,68 @@ set -eu
 
 ARCH=$(uname -m)
 
+# Build against an Arch Linux SNAPSHOT of the whole repository.
+#
+# Pitivi 2023.03 is the last release (March 2023) and dies with SIGSEGV when a
+# clip is dragged into the timeline. The crash is inside matplotlib's draw,
+# called from GtkWidget.do_draw() on the keyframe curve. The official Flatpak
+# on the very same machine, with the same project and the same media, works.
+#
+# The code is identical in both (both use the upstream 2023.03.0 tag), and the
+# app has barely evolved since - local development is maintenance only. So the
+# difference has to be the stack it is built against:
+#
+#                 Flatpak (works)      Arch today (crashes)
+#   Python            3.13.15                 3.14.8
+#   matplotlib         3.9.4                  3.11.2
+#   pygobject         3.50.0                  3.58.1
+#   GStreamer         1.26.11                 1.28.8
+#   numpy             1.26.4                  2.5.4
+#
+# Arch is a rolling release: the repos carry exactly one version of each
+# package, so moving a single package back is impossible. Downgrading only
+# GStreamer to 1.26 has been tried and makes things worse - that gst-libav is
+# linked against the older ffmpeg (libavcodec.so.62 vs .63) and against the
+# older opencv, so gst-plugin-scanner can no longer load libgstlibav,
+# libgstopencv, libgstvpx and friends, and the AppImage loses video decoding.
+# Python is worse still: every Python module is built against one exact
+# interpreter version, so it cannot be moved on its own at all.
+#
+# archive.archlinux.org keeps complete and mutually consistent snapshots of the
+# whole repository for every day. Pointing pacman at one snapshot rebuilds the
+# entire stack as it was on that date, so everything stays compatible with
+# everything else - the same principle as the Flatpak's frozen runtime, but
+# without leaving the packaging tooling.
+#
+# 2025/11/01 is the last snapshot before Arch rebuilt the world for Python
+# 3.14 (which is also what bumped pitivi to 2023.03-10 on 2025-12-14), so it
+# still ships the 3.13 series:
+#   pitivi 2023.03-9, python 3.13.7, matplotlib 3.10.6,
+#   python-gobject 3.54.5, gstreamer/gst-editing-services 1.26.7,
+#   ffmpeg 8.0, opencv 4.12
+ARCH_SNAPSHOT="${ARCH_SNAPSHOT:-2025/11/01}"
+
+echo "Pinning the repository to the Arch snapshot $ARCH_SNAPSHOT..."
+echo "---------------------------------------------------------------"
+echo "Server=https://archive.archlinux.org/repos/$ARCH_SNAPSHOT/\$repo/os/\$arch" \
+    > /etc/pacman.d/mirrorlist
+
+# Signatures are not verified while on the snapshot: it ships the
+# archlinux-keyring of that date, and several packager keys have been revoked
+# since, so pacman refuses to accept the older packages ("key is disabled").
+# The archive is Arch's own mirror, fetched over HTTPS.
+sed -i 's/^SigLevel.*/SigLevel = Never/' /etc/pacman.conf
+
+# 'vulkan-mesa-device-select' was split in two after the snapshot date, which
+# pacman reports as a conflict with the newer 'vulkan-mesa-implicit-layers'.
+# This build does not use Vulkan, so just drop the half that did not exist yet.
+pacman -Rdd --noconfirm vulkan-mesa-implicit-layers 2>/dev/null || :
+
 echo "Installing package dependencies..."
 echo "---------------------------------------------------------------"
-pacman -Syu --noconfirm \
+# -Syyuu rather than -Syu: the extra 'u' lets pacman downgrade the base system
+# to the snapshot instead of refusing to move backwards.
+pacman -Syyuu --noconfirm --overwrite '*' \
                  xorg-server-xvfb \
                  curl \
                  wget \
@@ -17,50 +76,11 @@ pacman -Syu --noconfirm \
                  gst-plugin-opencv \
                  gst-plugins-ugly \
                  python-librosa
-                 
 
-# GStreamer 1.26 instead of the 1.28.x shipped by Arch.
-#
-# Pitivi 2023.03 segfaults with GStreamer 1.28: the timeline keyframe curve is a
-# matplotlib widget embedded in a GTK3 window, and GES 1.28 corrupts memory
-# (the 1.28 release notes list use-after-free fixes in GES control bindings and
-# GESUriSource callbacks). The corruption only shows up later, when matplotlib
-# redraws the curve: figure.py raises from inside GtkWidget.do_draw(), Gtk keeps
-# restarting the draw and the app dies with SIGSEGV a few seconds after a clip
-# is added to the timeline.
-#
-# Notes on how this was narrowed down:
-#   - Pitivi master (87 commits after 2023.03) crashes in the same place, so
-#     this is not something fixed by newer Pitivi code.
-#   - matplotlib + GTK3 alone, in the same AppImage, redraw the curve 149 times
-#     without crashing -> Python 3.14 and matplotlib 3.11 are not at fault.
-#   - The official Flatpak works, and its manifest pins GStreamer 1.26.
-#     https://github.com/flathub/org.pitivi.Pitivi (module "gstreamer", 1.26.8)
-#
-# 1.26.10 is the latest 1.26.x Arch built. Arch only keeps one rolling version
-# in the repos, so the pinned packages come from archive.archlinux.org.
-# Keep this list in sync with the gst* packages installed above: they all have
-# to move together, they are built against each other.
-GST_PIN="${GST_PIN:-1.26.10-5}"
-GST_PKGS="gstreamer gst-plugins-base gst-plugins-base-libs gst-plugins-good
-gst-plugins-bad gst-plugins-bad-libs gst-plugins-ugly gst-libav
-gst-editing-services gst-python gst-plugin-gtk gst-devtools gst-devtools-libs
-gst-plugin-va gst-rtsp-server gst-plugin-opencv"
-
-echo "Pinning GStreamer $GST_PIN (see comments above)..."
+echo "Snapshot versions in use:"
 echo "---------------------------------------------------------------"
-workdir=$(pwd)
-mkdir -p /tmp/gst-pin
-cd /tmp/gst-pin
-for pkg in $GST_PKGS; do
-    file="$pkg-$GST_PIN-$ARCH.pkg.tar.zst"
-    [ -f "$file" ] && continue
-    curl -sfLO "https://archive.archlinux.org/packages/${pkg%${pkg#?}}/$pkg/$file" \
-        || { echo "ERROR: could not download $file" >&2; exit 1; }
-done
-pacman -U --noconfirm --overwrite '*' ./*.pkg.tar.zst
-cd "$workdir"
-pacman -Q gstreamer gst-editing-services
+pacman -Q pitivi python python-matplotlib python-gobject python-numpy \
+          gstreamer gst-editing-services ffmpeg opencv
 
 echo "Installing debloated packages..."
 echo "---------------------------------------------------------------"
