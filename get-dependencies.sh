@@ -56,16 +56,19 @@ echo "Server=https://archive.archlinux.org/repos/$ARCH_SNAPSHOT/\$repo/os/\$arch
 # The archive is Arch's own mirror, fetched over HTTPS.
 sed -i 's/^SigLevel.*/SigLevel = Never/' /etc/pacman.conf
 
-# 'vulkan-mesa-device-select' was split in two after the snapshot date, which
-# pacman reports as a conflict with the newer 'vulkan-mesa-implicit-layers'.
-# This build does not use Vulkan, so just drop the half that did not exist yet.
-pacman -Rdd --noconfirm vulkan-mesa-implicit-layers 2>/dev/null || :
-
 echo "Installing package dependencies..."
 echo "---------------------------------------------------------------"
 # -Syyuu rather than -Syu: the extra 'u' lets pacman downgrade the base system
 # to the snapshot instead of refusing to move backwards.
+#
+# Vulkan stays at its current, newer version. 'vulkan-mesa-device-select' was
+# split into two packages after the snapshot date, so the snapshot side and the
+# current side do not line up (pacman reports a conflict) - and get-debloated-pkgs
+# installs freshly built vulkan-*-nano packages a few lines below that require
+# the NEW 'vulkan-mesa-implicit-layers'. Ignoring the whole set keeps both sides
+# consistent. Pitivi does not use Vulkan.
 pacman -Syyuu --noconfirm --overwrite '*' \
+                 --ignore vulkan-intel,vulkan-radeon,vulkan-virtio,vulkan-mesa-device-select,vulkan-mesa-implicit-layers \
                  xorg-server-xvfb \
                  curl \
                  wget \
