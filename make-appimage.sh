@@ -51,6 +51,19 @@ export DEPLOY_GSTREAMER_ALL=1
 # writing \${SHARUN_DIR} (inside the single quotes) leaves a literal backslash
 # in the generated .env, which breaks pathmap and makes pitivi fail to import
 # its own module ("No module named 'pitivi'").
+#
+# But PATH_MAPPING alone is not enough: pathmap reverse-maps its own outputs by
+# default (PATHMAP_REVERSE, on unless disabled). That reverse mapping also
+# applies to realpath()/canonicalize_file_name(), and glycin -- the loader
+# gdk-pixbuf delegates every image decode to on Arch -- canonicalizes the path
+# it is given. It therefore received a corrupted path built out of the original
+# one plus the last (len(TARGET) - len(SOURCE)) characters of it, e.g.
+#     /usr/share/pitivi/pixmaps/trimbar-focused.pngused.png   (8 = 25 - 17)
+#     ...trimbar-focused.png/share/pitivi/pixmaps/...        (36 = 53 - 17)
+# could never be opened. Pitivi raises that from inside GtkWidget.do_draw(),
+# Gtk keeps restarting the draw, the frames pile up and the app segfaults a few
+# seconds after importing a clip -- which is why the crash looked so random.
+# PATHMAP_REVERSE=0 is set below, in .env, to turn that reverse mapping off.
 export PATH_MAPPING='
   /usr/lib/pitivi:${SHARUN_DIR}/lib/pitivi
   /usr/share/pitivi:${SHARUN_DIR}/share/pitivi
@@ -79,6 +92,16 @@ quick-sharun \
 # starting a render freezes/crashes a few seconds in.
 
 # Additional changes can be done in between here
+
+# pathmap virtualizes the paths it hands back (its "reverse mapping") by default,
+# including what realpath()/canonicalize_file_name() return. glycin canonicalizes
+# the image path before opening it, so it got a corrupted path and failed to load
+# every single image -- gdk-pixbuf returns an error, pitivi raises it from
+# inside GtkWidget.do_draw(), Gtk re-runs the draw in a loop and the app
+# segfaults. Disabling the reverse mapping fixes it; see the comment above
+# PATH_MAPPING for the details. This has to go through .env because pathmap is
+# preloaded by sharun at runtime, after this script is done.
+echo 'PATHMAP_REVERSE=0' >> ./AppDir/.env
 
 # Turn AppDir into AppImage
 quick-sharun --make-appimage
