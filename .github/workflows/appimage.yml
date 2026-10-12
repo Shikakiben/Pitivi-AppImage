@@ -15,8 +15,13 @@ jobs:
       matrix:
         include:
           - { runs-on: ubuntu-latest, name: Build AppImage, arch: x86_64 }
-          # comment out this line if aarch64 is not wanted
-          - { runs-on: ubuntu-24.04-arm, name: Build AppImage, arch: aarch64 }
+          # aarch64 is disabled: get-dependencies.sh pins GStreamer 1.26 from
+          # archive.archlinux.org to work around a GES 1.28 crash, and that
+          # archive only carries x86_64 builds. Arch Linux ARM has no
+          # equivalent archive of old packages, so the pin cannot be applied
+          # there and the aarch64 AppImage would still crash.
+          # Re-enable once the pin is no longer needed.
+          # - { runs-on: ubuntu-24.04-arm, name: Build AppImage, arch: aarch64 }
     container: ghcr.io/pkgforge-dev/archlinux:latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
