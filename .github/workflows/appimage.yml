@@ -15,12 +15,14 @@ jobs:
       matrix:
         include:
           - { runs-on: ubuntu-latest, name: Build AppImage, arch: x86_64 }
-          # aarch64 is disabled: get-dependencies.sh pins GStreamer 1.26 from
-          # archive.archlinux.org to work around a GES 1.28 crash, and that
-          # archive only carries x86_64 builds. Arch Linux ARM has no
-          # equivalent archive of old packages, so the pin cannot be applied
-          # there and the aarch64 AppImage would still crash.
-          # Re-enable once the pin is no longer needed.
+          # aarch64 is disabled: get-dependencies.sh pins the repository to the
+          # Arch snapshot of 2025/11/01, the last one built for Python 3.13,
+          # and archive.archlinux.org only carries x86_64 (an aarch64 path there
+          # is a 404). Arch Linux ARM has no archive of old packages at all: the
+          # community one, tardis, was shut down on 2026-06-02, and ALA itself
+          # has already moved to Python 3.14 (python 3.14.8, pitivi 2023.03-11).
+          # So an aarch64 build would get 3.14 and crash the same way.
+          # Re-enable once the snapshot is no longer needed.
           # - { runs-on: ubuntu-24.04-arm, name: Build AppImage, arch: aarch64 }
     container: ghcr.io/pkgforge-dev/archlinux:latest
     steps:
