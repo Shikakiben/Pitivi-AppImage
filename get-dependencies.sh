@@ -4,9 +4,42 @@ set -eu
 
 ARCH=$(uname -m)
 
+# Build against an Arch Linux SNAPSHOT of the whole repository.
+#
+# Pitivi 2023.03 crashes with SIGSEGV under CPython 3.14 (a use-after-free in
+# re-entrant C->Py->C callbacks). Python 3.13 is not affected.
+#
+# Arch is rolling and every Python module is built against one exact interpreter
+# version, so a single package cannot be moved back. archive.archlinux.org keeps
+# complete snapshots of the whole repository for every day; pointing pacman at
+# one rebuilds the entire stack as it was on that date, all mutually compatible.
+#
+# 2025/11/01 is the last snapshot before Arch rebuilt the world for Python 3.14
+# (which also bumped pitivi to 2023.03-10 on 2025-12-14), so it still ships the
+# 3.13 series: pitivi 2023.03-9, python 3.13.7, matplotlib 3.10.6,
+# python-gobject 3.54.5, gstreamer 1.26.7, ffmpeg 8.0, opencv 4.12.
+#
+# Temporary: drop the snapshot once CPython fixes the bug.
+ARCH_SNAPSHOT="${ARCH_SNAPSHOT:-2025/11/01}"
+
+echo "Pinning the repository to the Arch snapshot $ARCH_SNAPSHOT..."
+echo "---------------------------------------------------------------"
+echo "Server=https://archive.archlinux.org/repos/$ARCH_SNAPSHOT/\$repo/os/\$arch" \
+    > /etc/pacman.d/mirrorlist
+
+# The snapshot ships the archlinux-keyring of that date; several packager keys
+# have been revoked since, so pacman rejects the older packages. The archive is
+# Arch's own mirror, fetched over HTTPS.
+sed -i 's/^SigLevel.*/SigLevel = Never/' /etc/pacman.conf
+
+# 'vulkan-mesa-device-select' was split in two after the snapshot date, which
+# pacman reports as a conflict. This build does not use Vulkan.
+pacman -Rdd --noconfirm vulkan-mesa-implicit-layers 2>/dev/null || :
+
 echo "Installing package dependencies..."
 echo "---------------------------------------------------------------"
-pacman -Syu --noconfirm \
+# -Syyuu rather than -Syu: the extra 'u' lets pacman downgrade to the snapshot.
+pacman -Syyuu --noconfirm --overwrite '*' \
                  xorg-server-xvfb \
                  curl \
                  wget \
@@ -18,17 +51,26 @@ pacman -Syu --noconfirm \
                  gst-plugins-ugly \
                  python-librosa
 
-echo "Installing debloated packages..."
+echo "Snapshot versions in use:"
 echo "---------------------------------------------------------------"
-# '! glycin' excludes the debloated 'glycin-mini' from the '--add-common' set.
-# glycin-mini is actually glycin-ng, a drop-in rewrite of GNOME glycin, and it
-# fails to decode grayscale / 1-bit PNGs (modes L, LA and 1 return NULL from
-# GdkPixbuf.Pixbuf.new_from_file*). Pitivi ships a few effect thumbnails in
-# those modes and pitivi/effects.py does not catch the resulting exception, so
-# the whole Effects panel ends up empty and rendering breaks.
-# Keeping the real glycin avoids this and lets quick-sharun deploy the glycin
-# loaders and bubblewrap the same way it does for any GNOME glycin app.
-get-debloated-pkgs --add-common --prefer-nano '!' glycin
+pacman -Q pitivi python python-matplotlib python-gobject python-numpy \
+          gstreamer gst-editing-services ffmpeg opencv
+
+# Thumbnails fix: Pitivi generates them in RGBA, but JPEG has no alpha channel
+# and glycin refuses to encode RGBA as JPEG, so every thumbnail fails to save
+# and the timeline clips stay blank. Switch the caps to RGB. (Same fix as the
+# Flatpak's pitivi-thumbnails patch, missing from the Arch package.)
+PREVIEWERS=/usr/lib/pitivi/python/pitivi/timeline/previewers.py
+echo "Applying the RGBA -> RGB thumbnails fix..."
+echo "---------------------------------------------------------------"
+sed -i 's/format=(string)RGBA/format=(string)RGB/g' "$PREVIEWERS"
+grep -n 'format=(string)' "$PREVIEWERS"
+
+# The debloated package set is NOT used here: get-debloated-pkgs serves
+# mini/nano variants rebuilt against the CURRENT repo (Python 3.14), which would
+# drag 3.14 packages back in and break the snapshot. Restore it once we go back
+# to the current repository.
+# get-debloated-pkgs --add-common --prefer-nano '!' glycin
 
 # Comment this out if you need an AUR package
 #make-aur-package PACKAGENAME
