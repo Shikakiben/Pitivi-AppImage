@@ -66,10 +66,12 @@ echo "---------------------------------------------------------------"
 sed -i 's/format=(string)RGBA/format=(string)RGB/g' "$PREVIEWERS"
 grep -n 'format=(string)' "$PREVIEWERS"
 
-# The debloated package set is NOT used here: get-debloated-pkgs serves
-# mini/nano variants rebuilt against the CURRENT repo (Python 3.14), which would
-# drag 3.14 packages back in and break the snapshot. Restore it once we go back
-# to the current repository.
+# The debloated package set is NOT used here. get-debloated-pkgs installs
+# prebuilt .pkg.tar.zst from a GitHub release with 'pacman -U', so it never
+# reads /etc/pacman.d/mirrorlist: the snapshot above does not apply to them.
+# That release is rebuilt against today's Arch, which is 3.14, so it would drag
+# 3.14 packages back in and break the snapshot. Restore it once we go back to
+# the current repository.
 # get-debloated-pkgs --add-common --prefer-nano '!' glycin
 
 # Comment this out if you need an AUR package
